@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <item type="id" name="view_type_country_capital_adapter_1"/>
+    <item type="id" name="view_type_country_capital_adapter_2"/>
+    <item type="id" name="view_type_country_capital_adapter_3"/>
+    <item type="id" name="view_type_regular_button_adapter_1"/>
+    <item type="id" name="view_type_regular_button_adapter_2"/>
+    <item type="id" name="view_type_regular_button_adapter_3"/>
+    <item type="id" name="view_type_button_adapter_1"/>
+    <item type="id" name="view_type_button_adapter_2"/>
+    <item type="id" name="view_type_button_adapter_3"/>
+    <item type="id" name="view_provider_id"/>
+
+</resources>

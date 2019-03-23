@@ -1,0 +1,2 @@
+include ':app', ':library', ':library-kotlin'
+rootProject.name='AdapterCeptionSampleApp'
