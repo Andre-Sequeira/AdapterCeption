@@ -1,4 +1,4 @@
-package com.andresequeira.libraryKotlin;
+package com.andresequeira.adapterception;
 
 import android.content.Context;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -21,6 +21,6 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("com.andresequeira.library_kotlin.test", appContext.getPackageName());
+        assertEquals("com.andresequeira.library.test", appContext.getPackageName());
     }
 }

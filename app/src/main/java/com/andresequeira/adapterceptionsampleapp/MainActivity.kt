@@ -14,13 +14,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.andresequeira.library.AdapterCeption
-import com.andresequeira.library.ViewType
-import com.andresequeira.libraryKotlin.plus
+import com.andresequeira.adapterception.AdapterCeption
+import com.andresequeira.adapterception.ViewType
+import com.andresequeira.adapterception.get
+import com.andresequeira.adapterception.plus
 import kotlinx.android.extensions.LayoutContainer
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.button_custom.view.*
@@ -28,6 +28,10 @@ import kotlinx.android.synthetic.main.item_country_capital.view.*
 import kotlinx.android.synthetic.main.layout_search.*
 
 class MainActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG_SEARCH_ADAPTER = "SearchAdapterTag"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,9 +55,19 @@ class MainActivity : AppCompatActivity() {
             )
         )
         val searchAdapter = SearchAdapter(countryCapitalAdapter.filter())
+            .setTag<SearchAdapter>(TAG_SEARCH_ADAPTER)
         recycler.adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
                 HeaderAdapter("--- Separator --- Different example bellow --- Separator ---") +
                 buttonAdapter + regularAdapter
+    }
+
+    override fun onBackPressed() {
+        val adapterCeption = recycler.adapter as AdapterCeption<*>
+        val searchAdapter : SearchAdapter = adapterCeption[TAG_SEARCH_ADAPTER] ?: return super.onBackPressed()
+        if (searchAdapter.c == 0) {
+            return searchAdapter.toggleC()
+        }
+        super.onBackPressed()
     }
 }
 
@@ -214,15 +228,28 @@ class HeaderAdapter(val text: String? = null) : AdapterCeption<TextView>() {
 
 class SearchAdapter(val filter: (String) -> Unit) : AdapterCeption<FilterLayout>() {
 
+    var c = 1
+
+    fun toggleC() {
+        c = !c
+        update()
+    }
+
     override fun bind(viewWrapper: FilterLayout, position: Int) {
         viewWrapper.bind(filter)
+        viewWrapper.textFilter.setOnClickListener {
+            toggleC()
+        }
     }
+
+    operator fun Int.not(): Int = if (this != 0) 0 else 1
 
     override fun unbind(viewWrapper: FilterLayout) {
         viewWrapper.unbind()
+        viewWrapper.textFilter.setOnClickListener(null)
     }
 
-    override fun count(): Int = 1
+    override fun count(): Int = c
 
     override fun newViewProvider(): ViewProvider<FilterLayout> {
         return object : ViewProvider<FilterLayout>() {

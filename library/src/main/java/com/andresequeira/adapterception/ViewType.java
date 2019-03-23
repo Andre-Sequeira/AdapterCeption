@@ -1,4 +1,4 @@
-package com.andresequeira.library;
+package com.andresequeira.adapterception;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

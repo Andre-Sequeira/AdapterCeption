@@ -1,9 +1,11 @@
-package com.andresequeira.libraryKotlin
+package com.andresequeira.adapterception
 
 import androidx.recyclerview.widget.RecyclerView
-import com.andresequeira.library.AdapterCeption
 
 operator fun AdapterCeption<*>.get(index: Int): AdapterCeption<*> = getChild(index)
+
+operator fun <T : AdapterCeption<*>> AdapterCeption<*>.get(tag : String) : T? = getChild(tag)
+
 
 //TODO optimize adapter objects creation
 infix operator fun RecyclerView.Adapter<*>.plus(other: RecyclerView.Adapter<*>): AdapterCeption<*> {

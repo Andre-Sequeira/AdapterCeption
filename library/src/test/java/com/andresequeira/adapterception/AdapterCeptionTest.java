@@ -1,4 +1,4 @@
-package com.andresequeira.library;
+package com.andresequeira.adapterception;
 
 import android.view.View;
 import android.view.ViewGroup;

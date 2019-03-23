@@ -1,4 +1,4 @@
-package com.andresequeira.libraryKotlin;
+package com.andresequeira.adapterception;
 
 import org.junit.Test;
 

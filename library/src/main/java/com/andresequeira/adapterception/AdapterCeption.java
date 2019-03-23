@@ -1,4 +1,4 @@
-package com.andresequeira.library;
+package com.andresequeira.adapterception;
 
 import android.util.SparseArray;
 import android.view.View;
@@ -16,32 +16,7 @@ import java.util.*;
 
 /**
  * Created by andre on 1/26/18.
- *
- * # AdapterCeption
- *
- * Yo dawg,
- * I heard you liked RecyclerView.Adapter
- * so we put your adapters inside another adapter
- * so you can stack your adapters on top of other adapters!
- *
- * ...
- * The main point of this adapter is to help build recyclerview/adapter? with different static view holders, i.e. when the relative position of these view types are always the same.
- *
- * most common example: A post with comments on the bottom ...
- *
- * 2 ways:
- *  - Write a regular Adapter or grab an existing one and it gets wrapped into a special adapter:
- *
- *
- *
- *  - Subclass AdapterCeption
- *
- *
- *
- *
- *
- *  Check the sample app
- *
+ * <p>
  * TODO: full coverage tests
  * TODO: Write proper documentation
  */
@@ -110,11 +85,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     //region CONSTRUCTOR
 
-    public AdapterCeption(List<RecyclerView.Adapter> children) {
+    public AdapterCeption(@NonNull List<RecyclerView.Adapter> children) {
         setAdapters(children);
     }
 
-    public AdapterCeption(RecyclerView.Adapter... children) {
+    public AdapterCeption(@NonNull RecyclerView.Adapter... children) {
         setAdapters(children);
     }
     //endregion
@@ -198,6 +173,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     //region PUBLIC
 
+    @NonNull
     public static RecyclerView.ViewHolder getViewHolder(@NonNull View view) {
 
         final Object tag = view
@@ -209,14 +185,17 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return (RecyclerView.ViewHolder) tag;
     }
 
-    public static <VW extends RecyclerView.ViewHolder> AdapterCeption<VW> adapt(RecyclerView.Adapter<VW> adapter) {
+    @NonNull
+    public static <VW extends RecyclerView.ViewHolder> AdapterCeption<VW> adapt(@NonNull RecyclerView.Adapter<VW> adapter) {
         return new AdapterCeptionAdapter<>(adapter);
     }
 
+    @Nullable
     public final RecyclerView getRecyclerView() {
         return getRoot().rv;
     }
 
+    @NonNull
     public final List<AdapterCeption<?>> getChildren() {
         return Collections.unmodifiableList(children);
     }
@@ -229,6 +208,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return getParent() == null;
     }
 
+    @NonNull
     public final AdapterCeption getRoot() {
         final AdapterCeption<?> parent = getParent();
         if (parent == null) {
@@ -238,6 +218,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     @SuppressWarnings("unchecked")
+    @NonNull
     public final <VB extends AdapterCeption<?>> VB getChild(int index) {
         return (VB) children.get(index);
     }
@@ -276,22 +257,26 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return children != EMPTY;
     }
 
+    @Nullable
     public final AdapterCeption<?> getParent() {
         return parent;
     }
 
     @SuppressWarnings("unchecked")
-    public final <T extends AdapterCeption<VW>> T setTag(String tag) {
+    @NonNull
+    public final <T extends AdapterCeption<VW>> T setTag(@NonNull String tag) {
         this.tag = tag;
         return (T) this;
     }
 
+    @Nullable
     public final String getTag() {
         return tag;
     }
 
     @SuppressWarnings("unchecked")
-    public final <T extends AdapterCeption<?>> T getChild(String tag) {
+    @Nullable
+    public final <T extends AdapterCeption<?>> T getChild(@NonNull String tag) {
         if (this.tag != null && this.tag.equals(tag)) {
             return (T) this;
         }
@@ -321,12 +306,17 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         dispatchUpdates(diffResult, offset);
     }
 
-    public final void setAdapters(RecyclerView.Adapter... adapters) {
+    public final void setAdapters(@NonNull RecyclerView.Adapter... adapters) {
         setAdapters(Arrays.asList(adapters));
     }
 
-    public final void setAdapters(Collection<? extends RecyclerView.Adapter> adapters) {
+    public final void setAdapters(@Nullable Collection<? extends RecyclerView.Adapter> adapters) {
         this.children.clear();
+        if (adapters == null) {
+            this.children = EMPTY;
+            getRoot().rootRecount();
+            return;
+        }
         add(adapters);
     }
 
@@ -336,7 +326,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return this;
     }
 
-    public final void add(Collection<? extends RecyclerView.Adapter> adapters) {
+    public final void add(@NonNull Collection<? extends RecyclerView.Adapter> adapters) {
         for (RecyclerView.Adapter AdapterCeption : adapters) {
             addAdapterCeption(AdapterCeption);
         }
@@ -350,6 +340,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
      * @param position
      * @return
      */
+    @NonNull
     public final AdapterCeption<VW> setRelativePosition(int position) {
         final int size = children.size();
         if (position > size) {
@@ -371,6 +362,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return this;
     }
 
+    @NonNull
     public final String getInfo() {
         return getInfo(new StringBuilder());
     }
@@ -715,6 +707,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return 0;
     }
 
+    @Nullable
     protected ViewType<?>[] viewTypes() {
         return null;
     }
@@ -723,6 +716,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return 0;
     }
 
+    @Nullable
     protected ViewProvider<VW> getViewProvider() {
         if (viewProvider == null) {
             viewProvider = newViewProvider();
@@ -730,6 +724,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return viewProvider;
     }
 
+    @Nullable
     protected ViewProvider<VW> newViewProvider() {
         return null;
     }
@@ -744,11 +739,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     }
 
-    protected void onAttach(RecyclerView recyclerView) {
+    protected void onAttach(@NonNull RecyclerView recyclerView) {
 
     }
 
-    protected void onDetach(RecyclerView recyclerView) {
+    protected void onDetach(@NonNull RecyclerView recyclerView) {
 
     }
 
@@ -757,16 +752,18 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return null;
     }
 
-    protected void dispatchUpdates(DiffUtil.DiffResult diffResult, int offset) {
+    protected void dispatchUpdates(@NonNull DiffUtil.DiffResult diffResult, int offset) {
         diffResult.dispatchUpdatesTo(
                 getRoot().updateCallback.setOffset(offset)
         );
     }
 
+    @NonNull
     protected DiffUtil.DiffResult calculateDiff(@NonNull DiffUtil.Callback callback) {
         return DiffUtil.calculateDiff(callback);
     }
 
+    @NonNull
     @Override
     public String toString() {
         return getClass().getSimpleName() +
@@ -865,20 +862,20 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
             throw new RuntimeException("If ViewWrapper is not a View then getView(ViewWrapper) must be implemented.");
         }
 
-        protected void onAttachToWindow(ViewWrapper viewWrapper) {
+        protected void onAttachToWindow(@NonNull ViewWrapper viewWrapper) {
 
         }
 
-        protected void onDetachFromWindow(ViewWrapper viewWrapper) {
+        protected void onDetachFromWindow(@NonNull ViewWrapper viewWrapper) {
 
         }
 
-        protected void onDestroy(ViewWrapper viewWrapper) {
+        protected void onDestroy(@NonNull ViewWrapper viewWrapper) {
 
         }
     }
 
-    public static class ViewHolder<VW> extends RecyclerView.ViewHolder {
+    private static class ViewHolder<VW> extends RecyclerView.ViewHolder {
 
         private VW viewWrapper;
         private ViewProvider<VW> provider;
@@ -912,7 +909,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
-    public interface Action {
+    interface Action {
         void apply(AdapterCeption<?> adapter);
     }
 
