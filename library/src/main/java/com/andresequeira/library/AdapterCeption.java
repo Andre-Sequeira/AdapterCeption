@@ -17,6 +17,31 @@ import java.util.*;
 /**
  * Created by andre on 1/26/18.
  *
+ * # AdapterCeption
+ *
+ * Yo dawg,
+ * I heard you liked RecyclerView.Adapter
+ * so we put your adapters inside another adapter
+ * so you can stack your adapters on top of other adapters!
+ *
+ * ...
+ * The main point of this adapter is to help build recyclerview/adapter? with different static view holders, i.e. when the relative position of these view types are always the same.
+ *
+ * most common example: A post with comments on the bottom ...
+ *
+ * 2 ways:
+ *  - Write a regular Adapter or grab an existing one and it gets wrapped into a special adapter:
+ *
+ *
+ *
+ *  - Subclass AdapterCeption
+ *
+ *
+ *
+ *
+ *
+ *  Check the sample app
+ *
  * TODO: full coverage tests
  * TODO: Write proper documentation
  */
