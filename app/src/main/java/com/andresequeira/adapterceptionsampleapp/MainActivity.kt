@@ -9,7 +9,6 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Adapter
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -37,7 +36,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
         recycler.layoutManager = LinearLayoutManager(this)
         val headerAdapter = HeaderAdapter()
         val countryCapitalAdapter = CountryCapitalAdapter(headerAdapter.listSize())
@@ -61,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         )
         recycler.adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
                 HeaderAdapter("--- Separator --- Different example bellow --- Separator ---") +
-                buttonAdapter + AdapterCeption.adapt(regularAdapter)
+                buttonAdapter + regularAdapter
     }
 
     override fun onBackPressed() {

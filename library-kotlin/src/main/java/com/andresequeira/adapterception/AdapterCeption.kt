@@ -20,3 +20,5 @@ inline operator fun AdapterCeption<*>.invoke(apply: AdapterCeption<*>.() -> Unit
     apply()
     return this
 }
+
+fun <VH : RecyclerView.ViewHolder> RecyclerView.Adapter<VH>.adapt(): AdapterCeption<VH> = AdapterCeption.adapt(this)
