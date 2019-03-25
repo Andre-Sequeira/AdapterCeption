@@ -19,6 +19,7 @@ import java.util.*;
  * <p>
  * TODO: full coverage tests
  * TODO: Write proper documentation
+ * TODO: Create Exception classes
  */
 
 public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHolder>
@@ -52,11 +53,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     //region ADAPTER FIELDS
     private int relativePosition = POSITION_FIRST;
+    private OffsetAdapterDataObserver observer;
     private ViewProvider<VW> viewProvider;
     private List<AdapterCeption<?>> children = EMPTY;
     private AdapterCeption parent;
     private int offset;
-    private int count = -1;
     private String tag;
     private Map<Integer, ViewType<?>> viewTypes;
     private Binding<VW> binding = new Binding<>(new Binder<VW>() {
@@ -76,11 +77,12 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     /**
      * The following fields are only used by the root Adapter.
      */
+    private int rootCount = -1;
     private RecyclerView rv;
-    private BinderListUpdateCallback updateCallback;
     private AdapterCeption[] binderPositions;
     private AdapterCeption[] binders;
     private SparseArray<ViewProvider> viewProviders = new SparseArray<>();
+    private RootAdapterDataObserver rootObserver;
     //endregion
 
     //region CONSTRUCTOR
@@ -95,13 +97,6 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     //endregion
 
     //region ADAPTER
-    @Override
-    public void registerAdapterDataObserver(@NonNull RecyclerView.AdapterDataObserver observer) {
-        if (!isRoot()) {
-            throw new UnsupportedOperationException("Only root adapter supports data observers");
-        }
-        super.registerAdapterDataObserver(observer);
-    }
 
     @Override
     public final int getItemViewType(int position) {
@@ -134,7 +129,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     @Override
     public final int getItemCount() {
-        return count;
+        return rootCount;
     }
 
     @Override
@@ -188,6 +183,15 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     @NonNull
     public static <VW extends RecyclerView.ViewHolder> AdapterCeption<VW> adapt(@NonNull RecyclerView.Adapter<VW> adapter) {
         return new AdapterCeptionAdapter<>(adapter);
+    }
+
+    @Nullable
+    public static Integer offsetAdapterPosition(RecyclerView.ViewHolder vh) {
+        final AdapterCeption tag = (AdapterCeption) vh.itemView.getTag(R.id.view_holder_tag);
+        if (tag == null) {
+            return null;
+        }
+        return vh.getAdapterPosition() - tag.offset;
     }
 
     @Nullable
@@ -289,23 +293,6 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return null;
     }
 
-    public final void update() {
-        if (!isRootAttached()) {
-            return;
-        }
-
-        DiffUtil.Callback update = onUpdate();
-        final AdapterCeption root = getRoot();
-        if (update == null) {
-            root.rootRecount();
-            root.notifyDataSetChanged();
-            return;
-        }
-
-        final DiffUtil.DiffResult diffResult = processUpdates(update);
-        dispatchUpdates(diffResult, offset);
-    }
-
     public final void setAdapters(@NonNull RecyclerView.Adapter... adapters) {
         setAdapters(Arrays.asList(adapters));
     }
@@ -366,6 +353,26 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     public final String getInfo() {
         return getInfo(new StringBuilder());
     }
+
+    public final void update() {
+        if (!isRootAttached()) {
+            return;
+        }
+
+        DiffUtil.Callback update = onUpdate();
+        final AdapterCeption root = getRoot();
+        if (update == null) {
+            root.rootRecount();
+            root.notifyDataSetChanged();
+            return;
+        }
+
+        final DiffUtil.DiffResult diffResult = processUpdates(update);
+        updateBinders(update.getOldListSize(), update.getNewListSize());
+        getRoot().unregisterAdapterDataObserver(getRoot().rootObserver);
+        dispatchUpdates(diffResult, offset);
+        getRoot().registerAdapterDataObserver(getRoot().rootObserver);
+    }
     //endregion
 
     //region INTERNAL
@@ -389,13 +396,13 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
                 }
                 AdapterCeption child = adapter.children.get(i);
                 recount(child, count + offset, adapters);
-                count += child.count;
+                count += child.rootCount;
             }
             if (adapter.relativePosition == adapter.children.size()) {
                 count = updateCount(adapter, count, offset, adapters);
             }
         }
-        adapter.count = count;
+        adapter.rootCount = count;
     }
 
     private static int updateCount(AdapterCeption<?> adapter, int count, int offset, LinkedList<AdapterCeption> binders) {
@@ -416,7 +423,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
         recount(this, 0, binders);
 
-        this.binderPositions = new AdapterCeption[count];
+        this.binderPositions = new AdapterCeption[rootCount];
         this.binders = binders.toArray(new AdapterCeption[0]);
 
         final Iterator<AdapterCeption> iterator = binders.iterator();
@@ -461,6 +468,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         if (isAttached()) {
             throw new RuntimeException(getThisAdapterCeptionMessage("already has a root."));
         }
+        adapter.registerAdapterDataObserver(observer = new OffsetAdapterDataObserver(adapter));
         this.children.add(adapter);
         adapter.setParent(this);
     }
@@ -471,9 +479,9 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     private void rootAttach(RecyclerView recyclerView) {
         this.rv = recyclerView;
-        updateCallback = new BinderListUpdateCallback(this);
         attach(rv);
         rootRecount();
+        registerAdapterDataObserver(rootObserver = new RootAdapterDataObserver());
     }
 
     private void attach(RecyclerView recyclerView) {
@@ -483,6 +491,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     private void rootDetach(RecyclerView recyclerView) {
         detach(recyclerView);
+        unregisterAdapterDataObserver(rootObserver);
         rv = null;
 
     }
@@ -497,49 +506,58 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     private DiffUtil.DiffResult processUpdates(@NonNull DiffUtil.Callback callback) {
-
-        int diff = callback.getNewListSize() - callback.getOldListSize();
-
-        if (diff != 0) {
-            final AdapterCeption root = getRoot();
-            final int newRootCount = root.count + diff;
-            AdapterCeption[] binderPositions = new AdapterCeption[newRootCount];
-
-            final int bottomIndex = offset + callback.getNewListSize();
-            final int oldBottomIndex = offset + callback.getOldListSize();
-
-            System.arraycopy(root.binderPositions, 0, binderPositions, 0, offset);
-            Arrays.fill(binderPositions, offset, bottomIndex, this);
-            System.arraycopy(root.binderPositions, oldBottomIndex, binderPositions, bottomIndex, root.count - oldBottomIndex);
-
-            //find this binder index
-            int index = -1;
-            for (int i = 0; i < root.binders.length; i++) {
-                if (root.binders[i] == this) {
-                    index = i + 1;
-                    break;
-                }
-            }
-
-            //update every binder offset to the right of this
-            for (int i = index; i < root.binders.length; i++) {
-                root.binders[i].offset += diff;
-            }
-
-            updateCount(diff);
-
-            root.binderPositions = binderPositions;
-        }
-
         return calculateDiff(callback);
     }
 
-    private void updateCount(int diff) {
-        count += diff;
-        final AdapterCeption<?> parent = getParent();
-        if (parent != null) {
-            parent.updateCount(diff);
+    void dataSetChanged() {
+        getRoot().rootRecount();
+    }
+
+    void itemRangeInserted(int positionStart, int itemCount) {
+        final AdapterCeption adapter = binderPositions[positionStart];
+        int newCount = adapter.count();
+        adapter.updateBinders(newCount - itemCount, newCount);
+    }
+
+    void itemRangeRemoved(int positionStart, int itemCount) {
+        final AdapterCeption adapter = binderPositions[positionStart];
+        int newCount = adapter.count();
+        adapter.updateBinders(newCount + itemCount, newCount);
+    }
+
+    private void updateBinders(int oldSize, int newSize) {
+        int diff = newSize - oldSize;
+        if (diff == 0) {
+            return;
         }
+        final AdapterCeption root = getRoot();
+        final int newRootCount = root.rootCount + diff;
+        AdapterCeption[] binderPositions = new AdapterCeption[newRootCount];
+
+        final int bottomIndex = offset + newSize;
+        final int oldBottomIndex = offset + oldSize;
+
+        System.arraycopy(root.binderPositions, 0, binderPositions, 0, offset);
+        Arrays.fill(binderPositions, offset, bottomIndex, this);
+        System.arraycopy(root.binderPositions, oldBottomIndex, binderPositions, bottomIndex, root.rootCount - oldBottomIndex);
+
+        //find this binder index
+        int index = -1;
+        for (int i = 0; i < root.binders.length; i++) {
+            if (root.binders[i] == this) {
+                index = i + 1;
+                break;
+            }
+        }
+
+        //update every binder offset to the right of this
+        for (int i = index; i < root.binders.length; i++) {
+            root.binders[i].offset += diff;
+        }
+
+        root.rootCount += diff;
+
+        root.binderPositions = binderPositions;
     }
 
     private Map<Integer, ViewType<?>> getViewTypes() {
@@ -753,9 +771,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     protected void dispatchUpdates(@NonNull DiffUtil.DiffResult diffResult, int offset) {
-        diffResult.dispatchUpdatesTo(
-                getRoot().updateCallback.setOffset(offset)
-        );
+        diffResult.dispatchUpdatesTo(this);
     }
 
     @NonNull
@@ -768,7 +784,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     public String toString() {
         return getClass().getSimpleName() +
                 ", tag: " + tag +
-                ", total count: " + count +
+                ", total count: " + rootCount +
                 ", itemCount: " + count() +
                 ", relativePosition: " + relativePosition +
                 ", offset: " + offset
@@ -873,6 +889,10 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         protected void onDestroy(@NonNull ViewWrapper viewWrapper) {
 
         }
+
+        public int getAdapterPosition(AdapterCeption<ViewWrapper> adapter, ViewWrapper viewWrapper) {
+            return AdapterCeption.getViewHolder(getView(viewWrapper)).getAdapterPosition() - adapter.offset;
+        }
     }
 
     private static class ViewHolder<VW> extends RecyclerView.ViewHolder {
@@ -913,38 +933,99 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         void apply(AdapterCeption<?> adapter);
     }
 
-    private static class BinderListUpdateCallback implements ListUpdateCallback {
+    private static class OffsetAdapterDataObserver extends RecyclerView.AdapterDataObserver {
 
-        ListUpdateCallback callback;
-        int offset;
+        private AdapterCeption adapter;
 
-        BinderListUpdateCallback(RecyclerView.Adapter adapter) {
-            callback = new AdapterListUpdateCallback(adapter);
-        }
-
-        BinderListUpdateCallback setOffset(int offset) {
-            this.offset = offset;
-            return this;
+        public OffsetAdapterDataObserver(AdapterCeption adapter) {
+            this.adapter = adapter;
         }
 
         @Override
-        public void onInserted(int position, int count) {
-            callback.onInserted(position + offset, count);
+        public void onChanged() {
+            adapter.getRoot().notifyDataSetChanged();
         }
 
         @Override
-        public void onRemoved(int position, int count) {
-            callback.onRemoved(position + offset, count);
+        public void onItemRangeChanged(int positionStart, int itemCount) {
+            adapter.getRoot().notifyItemRangeChanged(positionStart + adapter.offset, itemCount);
         }
 
         @Override
-        public void onMoved(int fromPosition, int toPosition) {
-            callback.onMoved(fromPosition + offset, toPosition + offset);
+        public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
+            adapter.getRoot().notifyItemRangeChanged(positionStart + adapter.offset, itemCount, payload);
         }
 
         @Override
-        public void onChanged(int position, int count, Object payload) {
-            callback.onChanged(position + offset, count, payload);
+        public void onItemRangeInserted(int positionStart, int itemCount) {
+            adapter.getRoot().notifyItemRangeInserted(positionStart + adapter.offset, itemCount);
+        }
+
+        @Override
+        public void onItemRangeRemoved(int positionStart, int itemCount) {
+            adapter.getRoot().notifyItemRangeRemoved(positionStart + adapter.offset, itemCount);
+        }
+
+        @Override
+        public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
+            for (int i = 0; i < itemCount; i++) {
+                adapter.getRoot().notifyItemMoved(fromPosition + i, toPosition + i);
+            }
         }
     }
+
+    private class RootAdapterDataObserver extends RecyclerView.AdapterDataObserver {
+
+        @Override
+        public void onChanged() {
+            dataSetChanged();
+        }
+
+        @Override
+        public void onItemRangeRemoved(int positionStart, int itemCount) {
+            itemRangeRemoved(positionStart, itemCount);
+        }
+
+        @Override
+        public void onItemRangeInserted(int positionStart, int itemCount) {
+            itemRangeInserted(positionStart, itemCount);
+        }
+    }
+
+//    private static class OffsetListUpdateCallback implements ListUpdateCallback {
+//
+//        ListUpdateCallback callback;
+//        int offset;
+//
+//        OffsetListUpdateCallback(RecyclerView.Adapter adapter) {
+//            callback = new AdapterListUpdateCallback(adapter);
+//        }
+//
+//        OffsetListUpdateCallback setOffset(int offset) {
+//            this.offset = offset;
+//            return this;
+//        }
+//
+//        @Override
+//        public void onInserted(int position, int count) {
+//            callback.onInserted(position + offset, count);
+//        }
+//
+//        @Override
+//        public void onRemoved(int position, int count) {
+//            callback.onRemoved(position + offset, count);
+//        }
+//
+//        @Override
+//        public void onMoved(int fromPosition, int toPosition) {
+//            callback.onMoved(fromPosition + offset, toPosition + offset);
+//        }
+//
+//        @Override
+//        public void onChanged(int position, int count, Object payload) {
+//            callback.onChanged(position + offset, count, payload);
+//        }
+//    }
+//
+
 }

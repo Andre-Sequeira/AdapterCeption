@@ -3,14 +3,17 @@ package com.andresequeira.adapterception;
 import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
-class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterCeption<VW>{
+class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterCeption<VW> {
 
     private RecyclerView.Adapter<VW> delegate;
 
-    public AdapterCeptionAdapter(RecyclerView.Adapter<VW> delegate) {
+    AdapterCeptionAdapter(RecyclerView.Adapter<VW> delegate) {
         this.delegate = delegate;
+        delegate.registerAdapterDataObserver(new AdapterDataObserver());
     }
 
     @Override
@@ -19,12 +22,12 @@ class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterC
     }
 
     @Override
-    protected void onAttach(RecyclerView recyclerView) {
+    protected void onAttach(@NonNull RecyclerView recyclerView) {
         delegate.onAttachedToRecyclerView(recyclerView);
     }
 
     @Override
-    protected void onDetach(RecyclerView recyclerView) {
+    protected void onDetach(@NonNull RecyclerView recyclerView) {
         delegate.onDetachedFromRecyclerView(recyclerView);
     }
 
@@ -45,29 +48,67 @@ class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterC
 
     @Override
     protected ViewProvider<VW> newViewProvider() {
-        return new ViewProvider<VW>() {
+        return new ViewHolderViewProvider();
+    }
 
-            @NonNull
-            @Override
-            protected VW newViewWrapper(@NonNull ViewGroup parent, int viewType) {
-                return delegate.onCreateViewHolder(parent, viewType);
-            }
+    private class ViewHolderViewProvider extends ViewProvider<VW> {
 
-            @NonNull
-            @Override
-            protected View getView(@NonNull VW vw) {
-                return vw.itemView;
-            }
+        @NonNull
+        @Override
+        protected VW newViewWrapper(@NonNull ViewGroup parent, int viewType) {
+            final VW vw = delegate.onCreateViewHolder(parent, viewType);
+            vw.itemView.setTag(R.id.view_holder_tag, AdapterCeptionAdapter.this);
+            return vw;
+        }
 
-            @Override
-            protected void onAttachToWindow(VW vw) {
-                delegate.onViewAttachedToWindow(vw);
-            }
+        @NonNull
+        @Override
+        protected View getView(@NonNull VW vw) {
+            return vw.itemView;
+        }
 
-            @Override
-            protected void onDetachFromWindow(VW vw) {
-                delegate.onViewDetachedFromWindow(vw);
+        @Override
+        protected void onAttachToWindow(@NonNull VW vw) {
+            delegate.onViewAttachedToWindow(vw);
+        }
+
+        @Override
+        protected void onDetachFromWindow(@NonNull VW vw) {
+            delegate.onViewDetachedFromWindow(vw);
+        }
+    }
+
+    private class AdapterDataObserver extends RecyclerView.AdapterDataObserver {
+        @Override
+        public void onChanged() {
+            AdapterCeptionAdapter.this.notifyDataSetChanged();
+        }
+
+        @Override
+        public void onItemRangeChanged(int positionStart, int itemCount) {
+            AdapterCeptionAdapter.this.notifyItemRangeChanged(positionStart, itemCount);
+        }
+
+        @Override
+        public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
+            AdapterCeptionAdapter.this.notifyItemRangeChanged(positionStart, itemCount, payload);
+        }
+
+        @Override
+        public void onItemRangeInserted(int positionStart, int itemCount) {
+            AdapterCeptionAdapter.this.notifyItemRangeInserted(positionStart, itemCount);
+        }
+
+        @Override
+        public void onItemRangeRemoved(int positionStart, int itemCount) {
+            AdapterCeptionAdapter.this.notifyItemRangeRemoved(positionStart, itemCount);
+        }
+
+        @Override
+        public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
+            for (int i = 0; i < itemCount; i++) {
+                AdapterCeptionAdapter.this.notifyItemMoved(fromPosition + i, toPosition + i);
             }
-        };
+        }
     }
 }

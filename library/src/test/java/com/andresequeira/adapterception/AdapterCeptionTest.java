@@ -183,7 +183,7 @@ public class AdapterCeptionTest {
         }
 
         @Override
-        protected void dispatchUpdates(DiffUtil.DiffResult diffResult, int offset) {
+        protected void dispatchUpdates(@NonNull DiffUtil.DiffResult diffResult, int offset) {
 
         }
 

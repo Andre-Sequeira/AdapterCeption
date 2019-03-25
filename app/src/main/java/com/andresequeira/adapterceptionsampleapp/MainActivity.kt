@@ -9,6 +9,7 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Adapter
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -40,30 +41,32 @@ class MainActivity : AppCompatActivity() {
         recycler.layoutManager = LinearLayoutManager(this)
         val headerAdapter = HeaderAdapter()
         val countryCapitalAdapter = CountryCapitalAdapter(headerAdapter.listSize())
+        val searchAdapter = SearchAdapter(countryCapitalAdapter.filter())
+            .setTag<SearchAdapter>(TAG_SEARCH_ADAPTER)
         val buttonAdapter = ButtonAdapter(
             listOf(
                 "My view type is: ",
                 ", mine is: ",
                 "and mine: "
-            )
+            ).mapIndexed { index, text -> TextType(text, index) }
+                .toMutableList()
         )
         val regularAdapter = RegularButtonAdapter(
             listOf(
                 "I'm a view from a regular Adapter",
                 "So am I, but with a different view type",
                 "Cool right?"
-            )
+            ).mapIndexed { index, text -> TextType(text, index) }
+                .toMutableList()
         )
-        val searchAdapter = SearchAdapter(countryCapitalAdapter.filter())
-            .setTag<SearchAdapter>(TAG_SEARCH_ADAPTER)
         recycler.adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
                 HeaderAdapter("--- Separator --- Different example bellow --- Separator ---") +
-                buttonAdapter + regularAdapter
+                buttonAdapter + AdapterCeption.adapt(regularAdapter)
     }
 
     override fun onBackPressed() {
         val adapterCeption = recycler.adapter as AdapterCeption<*>
-        val searchAdapter : SearchAdapter = adapterCeption[TAG_SEARCH_ADAPTER] ?: return super.onBackPressed()
+        val searchAdapter: SearchAdapter = adapterCeption[TAG_SEARCH_ADAPTER] ?: return super.onBackPressed()
         if (searchAdapter.c == 0) {
             return searchAdapter.toggleC()
         }
@@ -297,11 +300,13 @@ class FilterLayout(override var containerView: View) : LayoutContainer {
     }
 }
 
-class RegularButtonAdapter(var texts: List<String>) : RecyclerView.Adapter<RegularButtonViewHolder>() {
+data class TextType(val text: String, val type: Int)
+
+class RegularButtonAdapter(var texts: MutableList<TextType>) : RecyclerView.Adapter<RegularButtonViewHolder>() {
 
     override fun getItemCount() = texts.size
 
-    override fun getItemViewType(position: Int): Int = when (position) {
+    override fun getItemViewType(position: Int): Int = when (texts[position].type) {
         0 -> R.id.view_type_regular_button_adapter_1
         1 -> R.id.view_type_regular_button_adapter_2
         2 -> R.id.view_type_regular_button_adapter_3
@@ -312,10 +317,21 @@ class RegularButtonAdapter(var texts: List<String>) : RecyclerView.Adapter<Regul
         RegularButtonViewHolder.new(parent, viewType)
 
     override fun onBindViewHolder(holder: RegularButtonViewHolder, position: Int) {
-        holder.update(texts[position])
+        holder.update(texts[position].text)
+        holder.itemView.setOnClickListener {
+            val index = getAdapterPosition(holder)
+            texts.removeAt(index)
+            notifyItemRemoved(index)
+        }
     }
 
+    override fun onViewRecycled(holder: RegularButtonViewHolder) =
+        holder.itemView.setOnClickListener(null)
 }
+
+fun getAdapterPosition(vh: RecyclerView.ViewHolder) =
+    AdapterCeption.offsetAdapterPosition(vh) ?: vh.adapterPosition
+
 
 class RegularButtonViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
@@ -344,16 +360,21 @@ class RegularButtonViewHolder(view: View) : RecyclerView.ViewHolder(view) {
     }
 }
 
-class ButtonAdapter(var texts: List<String>) : AdapterCeption<Button>() {
+class ButtonAdapter(var texts: MutableList<TextType>) : AdapterCeption<Button>() {
 
     override fun count() = texts.size
 
     override fun bind(viewWrapper: Button, position: Int) {
-        val text = texts[position] + viewType(position)
+        val text = texts[position].text + viewType(position)
         viewWrapper.text = text
+        viewWrapper.setOnClickListener {
+            val index = viewProvider!!.getAdapterPosition(this, viewWrapper)
+            texts.removeAt(index)
+            notifyItemRemoved(index)
+        }
     }
 
-    override fun viewType(position: Int): Int = when (position) {
+    override fun viewType(position: Int): Int = when (texts[position].type) {
         0 -> R.id.view_type_button_adapter_1
         1 -> R.id.view_type_button_adapter_2
         2 -> R.id.view_type_button_adapter_3
