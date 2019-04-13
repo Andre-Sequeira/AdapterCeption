@@ -196,7 +196,7 @@ public class AdapterCeptionTest {
         protected ViewProvider newViewProvider() {
             return new ViewProvider() {
                 @Override
-                protected Object newViewWrapper(ViewGroup parent, int viewType) {
+                protected Object newViewWrapper(@NonNull ViewGroup parent, int viewType) {
                     return null;
                 }
 

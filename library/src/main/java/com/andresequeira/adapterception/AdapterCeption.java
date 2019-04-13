@@ -463,10 +463,10 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     private void adopt(AdapterCeption adapter) {
         if (!adapter.isRoot()) {
-            throw new RuntimeException(getThisAdapterCeptionMessage("is already attached."));
+            throw new RuntimeException(getThisAdapterCeptionMessage("already has a parent."));
         }
-        if (isAttached()) {
-            throw new RuntimeException(getThisAdapterCeptionMessage("already has a root."));
+        if (adapter.isAttached()) {
+            throw new RuntimeException(getThisAdapterCeptionMessage("already is attached to a RecyclerView."));
         }
         adapter.registerAdapterDataObserver(observer = new OffsetAdapterDataObserver(adapter));
         this.children.add(adapter);
@@ -643,7 +643,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     private String getThisAdapterCeptionMessage(String s2) {
-        return "This AdapterCeption: " + this + ", " + s2;
+        return "This AdapterCeption: " + getClass().getName() + ", " + s2;
     }
 
     //region FOR TESTING

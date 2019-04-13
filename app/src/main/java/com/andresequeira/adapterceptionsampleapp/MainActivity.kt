@@ -9,7 +9,10 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -17,10 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.andresequeira.adapterception.AdapterCeption
-import com.andresequeira.adapterception.ViewType
-import com.andresequeira.adapterception.get
-import com.andresequeira.adapterception.plus
+import com.andresequeira.adapterception.*
 import kotlinx.android.extensions.LayoutContainer
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.button_custom.view.*
@@ -57,9 +57,15 @@ class MainActivity : AppCompatActivity() {
             ).mapIndexed { index, text -> TextType(text, index) }
                 .toMutableList()
         )
-        recycler.adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
+        val adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
                 HeaderAdapter("--- Separator --- Different example bellow --- Separator ---") +
                 buttonAdapter + regularAdapter
+
+        val pagingAdapter = adapter addPaging PagingViewProvider()
+
+        recycler.adapter = adapter
+
+        pagingAdapter.isLoading = true
     }
 
     override fun onBackPressed() {
@@ -68,8 +74,22 @@ class MainActivity : AppCompatActivity() {
         if (searchAdapter.c == 0) {
             return searchAdapter.toggleC()
         }
+        val pagingAdapter = adapterCeption.pagingAdapter
+        if (pagingAdapter?.isLoading == true) {
+            Toast.makeText(this, "Page loading hidden", Toast.LENGTH_SHORT).show()
+            pagingAdapter.isLoading = false
+            return
+        }
         super.onBackPressed()
     }
+}
+
+class PagingViewProvider : PagingAdapter.DefaultViewProvider() {
+
+    override fun newViewWrapper(parent: ViewGroup, type: Int): View {
+        return LayoutInflater.from(parent.context).inflate(R.layout.view_paging, parent, false)
+    }
+
 }
 
 private fun CountryCapitalAdapter.filter(): (s: String) -> Unit = { s ->
