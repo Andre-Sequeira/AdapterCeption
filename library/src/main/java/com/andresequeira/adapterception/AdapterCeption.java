@@ -6,9 +6,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
-import androidx.recyclerview.widget.AdapterListUpdateCallback;
 import androidx.recyclerview.widget.DiffUtil;
-import androidx.recyclerview.widget.ListUpdateCallback;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.*;
@@ -57,6 +55,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     private ViewProvider<VW> viewProvider;
     private List<AdapterCeption<?>> children = EMPTY;
     private AdapterCeption parent;
+    private int itemCount;
     private int offset;
     private String tag;
     private Map<Integer, ViewType<?>> viewTypes;
@@ -81,8 +80,9 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     private RecyclerView rv;
     private AdapterCeption[] binderPositions;
     private AdapterCeption[] binders;
-    private SparseArray<ViewProvider> viewProviders = new SparseArray<>();
+    private SparseArray<ViewProvider> viewProviders;
     private RootAdapterDataObserver rootObserver;
+    private NotifyWrapper notifier;
     //endregion
 
     //region CONSTRUCTOR
@@ -240,11 +240,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     public final int getEndingPosition() {
-        return offset + count() - 1;
+        return offset + itemCount - 1;
     }
 
     public final int getPosition(int offsettedPosition) {
-        if (offsettedPosition < 0 || offsettedPosition > count()) {
+        if (offsettedPosition < 0 || offsettedPosition > itemCount) {
             throw new IndexOutOfBoundsException();
         }
         return offset + offsettedPosition;
@@ -370,7 +370,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         final DiffUtil.DiffResult diffResult = processUpdates(update);
         updateBinders(update.getOldListSize(), update.getNewListSize());
         getRoot().unregisterAdapterDataObserver(getRoot().rootObserver);
-        dispatchUpdates(diffResult, offset);
+        dispatchUpdates(diffResult);
         getRoot().registerAdapterDataObserver(getRoot().rootObserver);
     }
     //endregion
@@ -405,10 +405,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         adapter.rootCount = count;
     }
 
-    private static int updateCount(AdapterCeption<?> adapter, int count, int offset, LinkedList<AdapterCeption> binders) {
-        binders.add(adapter);
+    private static int updateCount(AdapterCeption<?> adapter, int count, int offset, LinkedList<AdapterCeption> adapters) {
+        adapters.add(adapter);
         adapter.offset = count + offset;
-        return count + adapter.count();
+        adapter.itemCount = adapter.count();
+        return count + adapter.itemCount;
     }
 
     /**
@@ -429,7 +430,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         final Iterator<AdapterCeption> iterator = binders.iterator();
         for (int i = 0; iterator.hasNext(); ) {
             final AdapterCeption next = iterator.next();
-            for (int j = 0; j < next.count(); j++) {
+            for (int j = 0; j < next.itemCount; j++) {
                 this.binderPositions[i++] = next;
             }
         }
@@ -479,9 +480,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     private void rootAttach(RecyclerView recyclerView) {
         this.rv = recyclerView;
+        viewProviders = new SparseArray<>();
         attach(rv);
         rootRecount();
         registerAdapterDataObserver(rootObserver = new RootAdapterDataObserver());
+        notifier = new NotifyWrapper();
     }
 
     private void attach(RecyclerView recyclerView) {
@@ -509,20 +512,17 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return calculateDiff(callback);
     }
 
-    void dataSetChanged() {
+    private void dataSetChanged() {
         getRoot().rootRecount();
     }
 
-    void itemRangeInserted(int positionStart, int itemCount) {
-        final AdapterCeption adapter = binderPositions[positionStart];
-        int newCount = adapter.count();
-        adapter.updateBinders(newCount - itemCount, newCount);
+    private void itemRangeInserted(int itemCount, AdapterCeption adapter) {
+        adapter.updateBinders(adapter.itemCount, adapter.itemCount + itemCount);
     }
 
-    void itemRangeRemoved(int positionStart, int itemCount) {
+    private void itemRangeRemoved(int positionStart, int itemCount) {
         final AdapterCeption adapter = binderPositions[positionStart];
-        int newCount = adapter.count();
-        adapter.updateBinders(newCount + itemCount, newCount);
+        adapter.updateBinders(adapter.itemCount, adapter.itemCount - itemCount);
     }
 
     private void updateBinders(int oldSize, int newSize) {
@@ -555,6 +555,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
             root.binders[i].offset += diff;
         }
 
+        itemCount += diff;
         root.rootCount += diff;
 
         root.binderPositions = binderPositions;
@@ -684,7 +685,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         for (AdapterCeption<?> child : children) {
             count += child.getDynamicCount();
         }
-        return count + count();
+        return count + itemCount;
     }
 
     int getDynamicOffset() {
@@ -708,7 +709,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
 
         if (relativePosition <= childIndex) {
-            offset += count();
+            offset += itemCount;
         }
 
         if (!isRoot()) {
@@ -770,7 +771,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return null;
     }
 
-    protected void dispatchUpdates(@NonNull DiffUtil.DiffResult diffResult, int offset) {
+    protected void dispatchUpdates(@NonNull DiffUtil.DiffResult diffResult) {
         diffResult.dispatchUpdatesTo(this);
     }
 
@@ -855,6 +856,33 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     //endregion
+
+    @SuppressWarnings("unchecked")
+    private NotifyWrapper startNotify() {
+        final AdapterCeption root = getRoot();
+        root.notifier.notifiedAdapter = this;
+        return root.notifier;
+    }
+
+    /**
+     * WIP: trying somethings out.
+     * Should set the same strategy for every notify eventually.
+     * Possibly merge OffsetDataObserver and RootDataObserver with this class.
+     */
+    private class NotifyWrapper {
+
+        private AdapterCeption notifiedAdapter;
+
+        private NotifyWrapper notifyItemRangeInserted(int positionStart, int itemCount) {
+            AdapterCeption.this.notifyItemRangeInserted(positionStart + notifiedAdapter.offset, itemCount);
+            return this;
+        }
+
+        private void finish() {
+            notifiedAdapter = null;
+        }
+
+    }
 
     public static abstract class ViewProvider<ViewWrapper> {
 
@@ -958,7 +986,9 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
         @Override
         public void onItemRangeInserted(int positionStart, int itemCount) {
-            adapter.getRoot().notifyItemRangeInserted(positionStart + adapter.offset, itemCount);
+            adapter.startNotify()
+                    .notifyItemRangeInserted(positionStart, itemCount)
+                    .finish();
         }
 
         @Override
@@ -969,7 +999,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         @Override
         public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
             for (int i = 0; i < itemCount; i++) {
-                adapter.getRoot().notifyItemMoved(fromPosition + i, toPosition + i);
+                adapter.getRoot().notifyItemMoved(fromPosition + i + adapter.offset, toPosition + i + adapter.offset);
             }
         }
     }
@@ -988,7 +1018,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
         @Override
         public void onItemRangeInserted(int positionStart, int itemCount) {
-            itemRangeInserted(positionStart, itemCount);
+            itemRangeInserted(itemCount, notifier.notifiedAdapter != null ? notifier.notifiedAdapter : AdapterCeption.this);
         }
     }
 

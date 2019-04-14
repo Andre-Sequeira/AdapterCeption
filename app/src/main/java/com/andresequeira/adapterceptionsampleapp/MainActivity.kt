@@ -96,7 +96,10 @@ private fun CountryCapitalAdapter.filter(): (s: String) -> Unit = { s ->
     old.addAll(new)
     new.clear()
     new.addAll(list.filter { it.country.contains(s, true) || it.capital.contains(s, true) })
-    update()
+
+//    update() //update option 1
+    onUpdate()?.let { DiffUtil.calculateDiff(it).dispatchUpdatesTo(this) } //update option 2
+
     old.clear()
 }
 
@@ -182,7 +185,7 @@ class CountryCapitalAdapter(val listSize: (s: Int) -> Unit) : AdapterCeption<Vie
         }
     }
 
-    override fun onUpdate(): DiffUtil.Callback? {
+    public override fun onUpdate(): DiffUtil.Callback? {
         listSize(new.size)
         return object : DiffUtil.Callback() {
 
