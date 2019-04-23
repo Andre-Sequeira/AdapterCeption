@@ -16,14 +16,21 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
 
     public static final String ADAPTER_TAG = "com.andresequeira.adapterception.PagingAdapter";
 
-    @SuppressWarnings({"unchecked", "ConstantConditions"})
-    public static PagingAdapter addPaging(@NonNull RecyclerView.Adapter<?> root) {
+    @Nullable
+    public static <H extends PagingAdapter.PagingHandler> PagingAdapter<H> getPagingAdapter(
+            @NonNull RecyclerView.Adapter<?> adapter) {
+        if (!(adapter instanceof AdapterCeption)) {
+            return null;
+        }
+        return ((AdapterCeption<?>) adapter).getChildAtEnd(ADAPTER_TAG);
+    }
+
+    public static AdapterCeption<?> addPaging(@NonNull RecyclerView.Adapter<?> root) {
         return addPaging(root, null, null);
     }
 
-    @SuppressWarnings({"unchecked", "ConstantConditions"})
-    public static PagingAdapter addPaging(@NonNull RecyclerView.Adapter<?> root,
-                                          @NonNull ViewProvider<?> loadingViewProvider) {
+    public static AdapterCeption<?> addPaging(@NonNull RecyclerView.Adapter<?> root,
+                                              @NonNull ViewProvider<?> loadingViewProvider) {
         return addPaging(
                 root,
                 null,
@@ -31,7 +38,7 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
         );
     }
 
-    public static <H extends PagingHandler> PagingAdapter<H> addPaging(@NonNull RecyclerView.Adapter<?> root, @NonNull H handler) {
+    public static AdapterCeption<?> addPaging(@NonNull RecyclerView.Adapter<?> root, @NonNull PagingHandler handler) {
         return addPaging(
                 root,
                 handler,
@@ -39,9 +46,9 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
         );
     }
 
-    public static <H extends PagingHandler> PagingAdapter<H> addPaging(@NonNull RecyclerView.Adapter<?> root,
-                                                                       @Nullable H handler,
-                                                                       @Nullable ViewProvider<?> loadingViewProvider) {
+    public static AdapterCeption<?> addPaging(@NonNull RecyclerView.Adapter<?> root,
+                                              @Nullable PagingHandler handler,
+                                              @Nullable ViewProvider<?> loadingViewProvider) {
         AdapterCeption adapter;
         if (root instanceof AdapterCeption) {
             adapter = (AdapterCeption) root;
@@ -56,15 +63,17 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
             loadingViewProvider = new DefaultViewProvider();
         }
 
-        final PagingAdapter<H> pagingAdapter = new PagingAdapter<>(loadingViewProvider, handler);
+        final PagingAdapter pagingAdapter = new PagingAdapter<>(loadingViewProvider, handler);
 
         adapter.add(pagingAdapter);
 
+        //when adapter's relative position is set to last, switch it to second from last
+        //so the paging adapter always shows last
         if (adapter.getRelativePosition() == adapter.getChildrenSize()) {
             adapter.setRelativePosition(adapter.getRelativePosition() - 1);
         }
 
-        return pagingAdapter;
+        return adapter;
     }
 
     private H pagingHandler;
@@ -107,6 +116,11 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
     @Override
     protected ViewProvider<?> newViewProvider() {
         return viewProvider;
+    }
+
+    @Override
+    public void bind(@NonNull Object viewWrapper, int position) {
+        //empty
     }
 
     @Override

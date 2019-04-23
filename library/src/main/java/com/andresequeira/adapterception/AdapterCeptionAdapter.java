@@ -4,7 +4,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterCeption<VW> {
@@ -13,7 +12,7 @@ class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterC
 
     AdapterCeptionAdapter(RecyclerView.Adapter<VW> delegate) {
         this.delegate = delegate;
-        delegate.registerAdapterDataObserver(new AdapterDataObserver());
+        DelegateDataObserver.apply(this, delegate);
     }
 
     @Override
@@ -78,36 +77,88 @@ class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterC
         }
     }
 
-    private class AdapterDataObserver extends RecyclerView.AdapterDataObserver {
+    private static class DelegateDataObserver extends RecyclerView.AdapterDataObserver {
+
+        private final RecyclerView.Adapter adapter;
+        private DelegateDataObserver other;
+
+        private boolean flag;
+
+        static void apply(RecyclerView.Adapter adapter1, RecyclerView.Adapter adapter2) {
+
+            final DelegateDataObserver observer1 = new DelegateDataObserver(adapter1);
+            final DelegateDataObserver observer2 = new DelegateDataObserver(adapter2);
+
+            observer1.other = observer2;
+            observer2.other = observer1;
+
+            adapter1.registerAdapterDataObserver(observer2);
+            adapter2.registerAdapterDataObserver(observer1);
+        }
+
+        public DelegateDataObserver(RecyclerView.Adapter adapter) {
+            this.adapter = adapter;
+        }
+
+        private boolean preNotify() {
+            if (flag) {
+                return false;
+            }
+            other.flag = true;
+            return true;
+        }
+
+        private void posNotify() {
+            other.flag = false;
+        }
+
         @Override
         public void onChanged() {
-            AdapterCeptionAdapter.this.notifyDataSetChanged();
+            if (preNotify()) {
+                adapter.notifyDataSetChanged();
+                posNotify();
+            }
         }
 
         @Override
         public void onItemRangeChanged(int positionStart, int itemCount) {
-            AdapterCeptionAdapter.this.notifyItemRangeChanged(positionStart, itemCount);
+            if (preNotify()) {
+                adapter.notifyItemRangeChanged(positionStart, itemCount);
+                posNotify();
+            }
         }
 
         @Override
         public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
-            AdapterCeptionAdapter.this.notifyItemRangeChanged(positionStart, itemCount, payload);
+            if (preNotify()) {
+                adapter.notifyItemRangeChanged(positionStart, itemCount, payload);
+                posNotify();
+            }
         }
 
         @Override
         public void onItemRangeInserted(int positionStart, int itemCount) {
-            AdapterCeptionAdapter.this.notifyItemRangeInserted(positionStart, itemCount);
+            if (preNotify()) {
+                adapter.notifyItemRangeInserted(positionStart, itemCount);
+                posNotify();
+            }
         }
 
         @Override
         public void onItemRangeRemoved(int positionStart, int itemCount) {
-            AdapterCeptionAdapter.this.notifyItemRangeRemoved(positionStart, itemCount);
+            if (preNotify()) {
+                adapter.notifyItemRangeRemoved(positionStart, itemCount);
+                posNotify();
+            }
         }
 
         @Override
         public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
-            for (int i = 0; i < itemCount; i++) {
-                AdapterCeptionAdapter.this.notifyItemMoved(fromPosition + i, toPosition + i);
+            if (preNotify()) {
+                for (int i = 0; i < itemCount; i++) {
+                    adapter.notifyItemMoved(fromPosition + i, toPosition + i);
+                }
+                posNotify();
             }
         }
     }

@@ -20,7 +20,7 @@ import java.util.*;
  * TODO: Create Exception classes
  */
 
-public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHolder>
+public abstract class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         implements Binder<VW>, Unbinder<VW> {
 
     private static final String TAG = AdapterCeption.class.getSimpleName();
@@ -51,7 +51,6 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     //region ADAPTER FIELDS
     private int relativePosition = POSITION_FIRST;
-    private OffsetAdapterDataObserver observer;
     private ViewProvider<VW> viewProvider;
     private List<AdapterCeption<?>> children = EMPTY;
     private AdapterCeption parent;
@@ -59,6 +58,8 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     private int offset;
     private String tag;
     private Map<Integer, ViewType<?>> viewTypes;
+    private ArrayList<VisibilityObserver<?>> visibilityObservers;
+    private boolean visibility = true;
     private Binding<VW> binding = new Binding<>(new Binder<VW>() {
         @Override
         public void bind(@NonNull VW viewWrapper, int position) {
@@ -129,7 +130,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     @Override
     public final int getItemCount() {
-        return rootCount;
+        return isRoot() ? rootCount : itemCount;
     }
 
     @Override
@@ -202,6 +203,20 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     @NonNull
     public final List<AdapterCeption<?>> getChildren() {
         return Collections.unmodifiableList(children);
+    }
+
+    public final List<AdapterCeption<?>> getTree() {
+        final List<AdapterCeption<?>> branches = getBranches();
+        branches.add(0, this);
+        return branches;
+    }
+
+    public final List<AdapterCeption<?>> getBranches() {
+        final LinkedList<AdapterCeption<?>> tree = new LinkedList<>();
+        for (AdapterCeption<?> child : children) {
+            tree.addAll(child.getTree());
+        }
+        return tree;
     }
 
     public final int getChildrenSize() {
@@ -293,6 +308,18 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public final <T extends AdapterCeption<?>> T getChildAtEnd(@NonNull String tag) {
+        if (this.tag != null && this.tag.equals(tag)) {
+            return (T) this;
+        }
+        if (children.isEmpty()) {
+            return null;
+        }
+        return children.get(children.size() - 1).getChildAtEnd(tag);
+    }
+
     public final void setAdapters(@NonNull RecyclerView.Adapter... adapters) {
         setAdapters(Arrays.asList(adapters));
     }
@@ -349,11 +376,6 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return this;
     }
 
-    @NonNull
-    public final String getInfo() {
-        return getInfo(new StringBuilder());
-    }
-
     public final void update() {
         if (!isRootAttached()) {
             return;
@@ -372,6 +394,78 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         getRoot().unregisterAdapterDataObserver(getRoot().rootObserver);
         dispatchUpdates(diffResult);
         getRoot().registerAdapterDataObserver(getRoot().rootObserver);
+    }
+
+    public void registerVisibilityObserver(VisibilityObserver<?> observer) {
+        if (visibilityObservers == null) {
+            visibilityObservers = new ArrayList<>();
+        }
+        for (VisibilityObserver<?> o : visibilityObservers) {
+            if (o == observer) {
+                return;
+            }
+        }
+        visibilityObservers.add(observer);
+    }
+
+    public boolean unregisterVisibilityObserver(VisibilityObserver<?> observer) {
+        if (visibilityObservers == null) {
+            return false;
+        }
+        return visibilityObservers.remove(observer);
+    }
+
+    public void hide() {
+        if (!visibility) {
+            return;
+        }
+        visibility = false;
+        if (itemCount == 0) {
+            return;
+        }
+        notifyItemRangeRemoved(0, itemCount);
+    }
+
+    public void show() {
+        if (visibility || itemCount > 0) {
+            return;
+        }
+        visibility = true;
+        final int count = count();
+        if (count == 0) {
+            return;
+        }
+        notifyItemRangeInserted(0, count);
+    }
+
+    public void setVisibility(boolean visibility) {
+        if (visibility) {
+            show();
+        } else {
+            hide();
+        }
+    }
+
+    public boolean getVisibility() {
+        return visibility;
+    }
+
+    public boolean isVisible() {
+        return itemCount > 0;
+    }
+
+    @NonNull
+    public final String getTreeInfo() {
+        return getTreeInfo(new StringBuilder());
+    }
+
+    public String getInfo() {
+        return getClass().getSimpleName() +
+                ", tag: " + tag +
+                ", total count: " + rootCount +
+                ", itemCount: " + count() +
+                ", relativePosition: " + relativePosition +
+                ", offset: " + offset;
     }
     //endregion
 
@@ -408,8 +502,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     private static int updateCount(AdapterCeption<?> adapter, int count, int offset, LinkedList<AdapterCeption> adapters) {
         adapters.add(adapter);
         adapter.offset = count + offset;
-        adapter.itemCount = adapter.count();
-        return count + adapter.itemCount;
+        return count + adapter.setCount(adapter.count());
     }
 
     /**
@@ -449,6 +542,37 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
+    private int setCount(int count) {
+        if (!visibility) {
+            count = 0;
+        }
+
+        if (visibilityObservers != null) {
+            int oldCount = itemCount;
+            this.itemCount = count;
+
+            if (oldCount == 0 && itemCount > 0) {
+                visibilityChanged(true);
+            } else if (oldCount > 0 && itemCount == 0) {
+                visibilityChanged(false);
+            }
+        } else {
+            this.itemCount = count;
+        }
+
+        return this.itemCount;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void visibilityChanged(boolean visible) {
+        onVisibilityChanged(visible);
+        for (int i = visibilityObservers.size() - 1; i >= 0; i--) {
+            final VisibilityObserver<AdapterCeption<VW>> observer =
+                    (VisibilityObserver<AdapterCeption<VW>>) visibilityObservers.get(i);
+            observer.onVisibilityChanged(this, visible);
+        }
+    }
+
     private void addAdapterCeption(RecyclerView.Adapter adapter) {
         if (this.children == EMPTY) {
             this.children = new LinkedList<>();
@@ -469,7 +593,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         if (adapter.isAttached()) {
             throw new RuntimeException(getThisAdapterCeptionMessage("already is attached to a RecyclerView."));
         }
-        adapter.registerAdapterDataObserver(observer = new OffsetAdapterDataObserver(adapter));
+        adapter.registerAdapterDataObserver(new OffsetAdapterDataObserver(adapter));
         this.children.add(adapter);
         adapter.setParent(this);
     }
@@ -555,10 +679,10 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
             root.binders[i].offset += diff;
         }
 
-        itemCount += diff;
-        root.rootCount += diff;
-
         root.binderPositions = binderPositions;
+        root.rootCount += diff;
+        setCount(itemCount + diff);
+
     }
 
     private Map<Integer, ViewType<?>> getViewTypes() {
@@ -648,7 +772,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     //region FOR TESTING
-    private String getInfo(final StringBuilder builder) {
+    private String getTreeInfo(final StringBuilder builder) {
         final Action action = new Action() {
             @Override
             public void apply(AdapterCeption<?> vb) {
@@ -670,7 +794,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
                         builder.append("L");
                         builder.append(level);
                         builder.append(" - ");
-                        builder.append(vb.toString());
+                        builder.append(vb.getInfo());
                         builder.append("\n");
                     }
                 },
@@ -731,9 +855,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return null;
     }
 
-    protected int count() {
-        return 0;
-    }
+    protected abstract int count();
 
     @Nullable
     protected ViewProvider<VW> getViewProvider() {
@@ -744,14 +866,10 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     @Nullable
-    protected ViewProvider<VW> newViewProvider() {
-        return null;
-    }
+    protected abstract ViewProvider<VW> newViewProvider();
 
     @Override
-    public void bind(@NonNull VW viewWrapper, int position) {
-
-    }
+    public abstract void bind(@NonNull VW viewWrapper, int position);
 
     @Override
     public void unbind(@NonNull VW viewWrapper) {
@@ -780,16 +898,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         return DiffUtil.calculateDiff(callback);
     }
 
-    @NonNull
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() +
-                ", tag: " + tag +
-                ", total count: " + rootCount +
-                ", itemCount: " + count() +
-                ", relativePosition: " + relativePosition +
-                ", offset: " + offset
-                ;
+    protected void onVisibilityChanged(boolean visible) {
     }
     //endregion
 
@@ -799,7 +908,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         applyToChildren(action);
     }
 
-    private void applyRelative(Action action, Action before, Action after) {
+    void applyRelative(Action action, Action before, Action after) {
         if (before != null) {
             before.apply(this);
         }
@@ -830,11 +939,11 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
     }
 
-    private void applyToChildren(Action action) {
+    void applyToChildren(Action action) {
         applyToChildrenLeft(action, null);
     }
 
-    private void applyToChildrenLeft(Action action, @Nullable AdapterCeption toTheLeftOf) {
+    void applyToChildrenLeft(Action action, @Nullable AdapterCeption toTheLeftOf) {
         if (!hasChildren()) {
             return;
         }
@@ -865,7 +974,7 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
     }
 
     /**
-     * WIP: trying somethings out.
+     * WIP: trying some things out.
      * Should set the same strategy for every notify eventually.
      * Possibly merge OffsetDataObserver and RootDataObserver with this class.
      */
@@ -1021,41 +1130,5 @@ public class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerView.ViewHo
             itemRangeInserted(itemCount, notifier.notifiedAdapter != null ? notifier.notifiedAdapter : AdapterCeption.this);
         }
     }
-
-//    private static class OffsetListUpdateCallback implements ListUpdateCallback {
-//
-//        ListUpdateCallback callback;
-//        int offset;
-//
-//        OffsetListUpdateCallback(RecyclerView.Adapter adapter) {
-//            callback = new AdapterListUpdateCallback(adapter);
-//        }
-//
-//        OffsetListUpdateCallback setOffset(int offset) {
-//            this.offset = offset;
-//            return this;
-//        }
-//
-//        @Override
-//        public void onInserted(int position, int count) {
-//            callback.onInserted(position + offset, count);
-//        }
-//
-//        @Override
-//        public void onRemoved(int position, int count) {
-//            callback.onRemoved(position + offset, count);
-//        }
-//
-//        @Override
-//        public void onMoved(int fromPosition, int toPosition) {
-//            callback.onMoved(fromPosition + offset, toPosition + offset);
-//        }
-//
-//        @Override
-//        public void onChanged(int position, int count, Object payload) {
-//            callback.onChanged(position + offset, count, payload);
-//        }
-//    }
-//
 
 }

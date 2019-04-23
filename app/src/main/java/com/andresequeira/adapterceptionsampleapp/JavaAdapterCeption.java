@@ -10,8 +10,6 @@ import com.andresequeira.adapterception.AdapterCeption;
  */
 public class JavaAdapterCeption extends AdapterCeption<TextView> {
 
-
-
     @Override
     protected int viewType(int position) {
         return super.viewType(position);
@@ -19,17 +17,17 @@ public class JavaAdapterCeption extends AdapterCeption<TextView> {
 
     @Override
     protected int count() {
-        return super.count();
+        return 0;
     }
 
     @Nullable
     @Override
     protected ViewProvider<TextView> newViewProvider() {
-        return super.newViewProvider();
+        return null;
     }
 
     @Override
     public void bind(@NonNull TextView viewWrapper, int position) {
-        super.bind(viewWrapper, position);
+
     }
 }

@@ -9,10 +9,7 @@ import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewGroup.LayoutParams.MATCH_PARENT
-import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.Button
-import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -37,10 +34,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         recycler.layoutManager = LinearLayoutManager(this)
+
         val headerAdapter = HeaderAdapter()
+
         val countryCapitalAdapter = CountryCapitalAdapter(headerAdapter.listSize())
+
         val searchAdapter = SearchAdapter(countryCapitalAdapter.filter())
             .setTag<SearchAdapter>(TAG_SEARCH_ADAPTER)
+
+        val separatorAdapter = HeaderAdapter("--- Separator --- Different example bellow --- Separator ---")
+
         val buttonAdapter = ButtonAdapter(
             listOf(
                 "My view type is: ",
@@ -49,6 +52,7 @@ class MainActivity : AppCompatActivity() {
             ).mapIndexed { index, text -> TextType(text, index) }
                 .toMutableList()
         )
+
         val regularAdapter = RegularButtonAdapter(
             listOf(
                 "I'm a view from a regular Adapter",
@@ -57,15 +61,15 @@ class MainActivity : AppCompatActivity() {
             ).mapIndexed { index, text -> TextType(text, index) }
                 .toMutableList()
         )
-        val adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
-                HeaderAdapter("--- Separator --- Different example bellow --- Separator ---") +
-                buttonAdapter + regularAdapter
 
-        val pagingAdapter = adapter addPaging PagingViewProvider()
 
-        recycler.adapter = adapter
+        recycler.adapter = headerAdapter + searchAdapter + countryCapitalAdapter +
+                separatorAdapter.add(buttonAdapter, regularAdapter) addPaging PagingViewProvider()
 
-        pagingAdapter.isLoading = true
+        separatorAdapter.syncVisibility()
+            .withChildren()
+
+        recycler.adapter?.pagingAdapter()?.isLoading = true
     }
 
     override fun onBackPressed() {
@@ -74,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         if (searchAdapter.c == 0) {
             return searchAdapter.toggleC()
         }
-        val pagingAdapter = adapterCeption.pagingAdapter
+        val pagingAdapter = adapterCeption.pagingAdapter()
         if (pagingAdapter?.isLoading == true) {
             Toast.makeText(this, "Page loading hidden", Toast.LENGTH_SHORT).show()
             pagingAdapter.isLoading = false

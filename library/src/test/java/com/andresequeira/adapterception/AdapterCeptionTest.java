@@ -135,7 +135,7 @@ public class AdapterCeptionTest {
     }
 
     void print(AdapterCeption binder) {
-        System.out.println(binder.getInfo());
+        System.out.println(binder.getTreeInfo());
     }
 
     static class EmptyAdapterCeption extends AdapterCeption<Object> {
