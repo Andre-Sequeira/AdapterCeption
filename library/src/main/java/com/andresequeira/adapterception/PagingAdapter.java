@@ -176,7 +176,7 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
 
     @SuppressLint("ClickableViewAccessibility")
     private void attachScrollToRv(RecyclerView recyclerView) {
-        if (scrollListener == null) {
+        if (scrollListener == null || recyclerView == null) {
             return;
         }
 
@@ -226,7 +226,7 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
 
     @SuppressLint("ClickableViewAccessibility")
     private void detachScrollToRv(RecyclerView recyclerView) {
-        if (scrollListener == null) {
+        if (scrollListener == null || recyclerView == null) {
             return;
         }
 
