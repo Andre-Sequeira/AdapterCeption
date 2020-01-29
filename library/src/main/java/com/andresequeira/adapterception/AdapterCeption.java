@@ -320,6 +320,29 @@ public abstract class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerVi
         return children.get(children.size() - 1).getChildAtEnd(tag);
     }
 
+    @SuppressWarnings("unchecked")
+    @Nullable
+    public final <T extends RecyclerView.Adapter> T getChild(@NonNull Class<T> adapterClass) {
+        if (this.getClass().equals(adapterClass)) {
+            return (T) this;
+        }
+        for (AdapterCeption<?> child : children) {
+            if (child instanceof AdapterCeptionAdapter) {
+                AdapterCeptionAdapter a = (AdapterCeptionAdapter<?>)  child;
+                Object delegate = a.getDelegate();
+                if (delegate.getClass().equals(adapterClass)) {
+                    return (T) delegate;
+                }
+            }
+            final T child1 = child.getChild(adapterClass);
+            if (child1 != null) {
+                return child1;
+            }
+
+        }
+        return null;
+    }
+
     public final void setAdapters(@NonNull RecyclerView.Adapter... adapters) {
         setAdapters(Arrays.asList(adapters));
     }

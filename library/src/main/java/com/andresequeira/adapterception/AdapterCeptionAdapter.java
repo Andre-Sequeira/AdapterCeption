@@ -15,6 +15,10 @@ class AdapterCeptionAdapter<VW extends RecyclerView.ViewHolder> extends AdapterC
         DelegateDataObserver.apply(this, delegate);
     }
 
+    RecyclerView.Adapter<VW> getDelegate() {
+        return delegate;
+    }
+
     @Override
     protected int count() {
         return delegate.getItemCount();

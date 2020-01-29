@@ -1,6 +1,8 @@
 package com.andresequeira.adapterception
 
 import androidx.recyclerview.widget.RecyclerView
+import java.lang.RuntimeException
+import kotlin.reflect.KClass
 
 @Suppress("UNCHECKED_CAST")
 fun <VW> RecyclerView.Adapter<*>.asCeption(): AdapterCeption<*>? = this as? AdapterCeption<VW>
@@ -11,6 +13,17 @@ val RecyclerView.Adapter<*>.asCeption: AdapterCeption<*>?
 operator fun AdapterCeption<*>.get(index: Int): AdapterCeption<*> = getChild(index)
 
 operator fun <T : AdapterCeption<*>> AdapterCeption<*>.get(tag: String): T? = getChild(tag)
+
+operator fun <T : RecyclerView.Adapter<*>> AdapterCeption<*>.get(adapterClass: KClass<T>): T? =
+    getChild(adapterClass.java)
+
+inline fun <reified T : RecyclerView.Adapter<*>> AdapterCeption<*>.getSafe(): T? =
+    getChild(T::class.java)
+
+inline fun <reified T : RecyclerView.Adapter<*>> AdapterCeption<*>.get(): T =
+    getChild(T::class.java) ?: throw RuntimeException(
+        "No child of class: ${T::class.java}, exists."
+    )
 
 val AdapterCeption<*>.lastChild: AdapterCeption<*>?
     get() {
@@ -59,3 +72,6 @@ fun <H : PagingAdapter.PagingHandler> RecyclerView.Adapter<*>.pagingAdapterH(): 
     PagingAdapter.getPagingAdapter(this)
 
 fun RecyclerView.Adapter<*>.pagingAdapter(): PagingAdapter<*>? = pagingAdapterH<PagingAdapter.PagingHandler>()
+
+val RecyclerView.ViewHolder.offsetPosition
+    get() = AdapterCeption.offsetAdapterPosition(this) ?: adapterPosition
