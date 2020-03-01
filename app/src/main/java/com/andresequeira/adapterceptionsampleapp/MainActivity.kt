@@ -406,25 +406,23 @@ class ButtonAdapter(var texts: MutableList<TextType>) : AdapterCeption<Button>()
         else -> 0
     }
 
-    override fun newViewProvider() = object : ViewProvider<Button>() {
-        override fun newViewWrapper(parent: ViewGroup, viewType: Int): Button {
-            var color: Int = Color.BLACK
-            when (viewType) {
-                R.id.view_type_button_adapter_1 -> {
-                    color = Color.WHITE
-                }
-                R.id.view_type_button_adapter_2 -> {
-                    color = Color.LTGRAY
-                }
-                R.id.view_type_button_adapter_3 -> {
-                    color = Color.GRAY
-                }
+    override fun newViewProvider() = viewProvider { parent, viewType ->
+        var color: Int = Color.BLACK
+        when (viewType) {
+            R.id.view_type_button_adapter_1 -> {
+                color = Color.WHITE
             }
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.button_custom, parent, false)
-            view.buttonCustom.setBackgroundColor(color)
-            return view.buttonCustom
+            R.id.view_type_button_adapter_2 -> {
+                color = Color.LTGRAY
+            }
+            R.id.view_type_button_adapter_3 -> {
+                color = Color.GRAY
+            }
         }
-
+        LayoutInflater.from(parent.context).inflate(R.layout.button_custom, parent, false)
+            .buttonCustom.apply {
+            setBackgroundColor(color)
+        }
     }
 
 }

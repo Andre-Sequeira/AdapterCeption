@@ -729,8 +729,8 @@ public abstract class AdapterCeption<VW> extends RecyclerView.Adapter<RecyclerVi
         final AdapterCeption<?> adapter = rootGetAdapter(position);
         final int offsettedPosition = position - adapter.offset;
         final Binding<T> binding = adapter.rootGetBinding(adapter, offsettedPosition);
-        binding.binder.bind(viewWrapper, offsettedPosition);
-        return binding.unbinder;
+        binding.getBinder().bind(viewWrapper, offsettedPosition);
+        return binding.getUnbinder();
     }
 
     @SuppressWarnings("unchecked")
