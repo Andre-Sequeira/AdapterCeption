@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
         separatorAdapter.syncVisibility()
             .withChildren()
 
-        recycler.adapter?.pagingAdapter()?.isLoading = true
+        recycler.pagingAdapter()?.isLoading = true
     }
 
     override fun onBackPressed() {

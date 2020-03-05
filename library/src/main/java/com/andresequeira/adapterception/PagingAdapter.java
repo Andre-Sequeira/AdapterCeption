@@ -22,7 +22,7 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
         if (!(adapter instanceof AdapterCeption)) {
             return null;
         }
-        return ((AdapterCeption<?>) adapter).getChildAtEnd(ADAPTER_TAG);
+        return ((AdapterCeption<?>) adapter).getChild(ADAPTER_TAG);
     }
 
     public static AdapterCeption<?> addPaging(@NonNull RecyclerView.Adapter<?> root) {
@@ -88,7 +88,7 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
         }
     };
 
-    private PagingAdapter(@NonNull ViewProvider<?> viewProvider, @Nullable H handler) {
+    public PagingAdapter(@NonNull ViewProvider<?> viewProvider, @Nullable H handler) {
         this.viewProvider = viewProvider;
         this.pagingHandler = handler;
 
@@ -133,7 +133,7 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
         return new DiffUtil.Callback() {
             @Override
             public int getOldListSize() {
-                return isLoading ? 0 : 1;
+                return getItemCount();
             }
 
             @Override
@@ -239,14 +239,16 @@ public class PagingAdapter<H extends PagingAdapter.PagingHandler> extends Adapte
     private void checkLoad() {
         if (scrollListener != null) {
             final RecyclerView recyclerView = getRecyclerView();
-            boolean b = recyclerView != null && recyclerView.canScrollVertically(1);
-            if (getItemCount() == 0) {
-                return;
+            if (recyclerView != null) {
+//                if (recyclerView.getChildCount() == 0) {
+//                    return;
+//                }
+                if (recyclerView.canScrollVertically(1)) {
+                    return;
+                }
+                scrollListener.checkLoad();
             }
-            if (b) {
-                return;
-            }
-            scrollListener.checkLoad();
+
         }
     }
 

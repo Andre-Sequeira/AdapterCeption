@@ -14,8 +14,8 @@ operator fun AdapterCeption<*>.get(index: Int): AdapterCeption<*> = getChild(ind
 
 operator fun <T : AdapterCeption<*>> AdapterCeption<*>.get(tag: String): T? = getChild(tag)
 
-operator fun <T : RecyclerView.Adapter<*>> AdapterCeption<*>.get(adapterClass: KClass<T>): T? =
-    getChild(adapterClass.java)
+operator fun <T : RecyclerView.Adapter<*>> RecyclerView.Adapter<*>.get(adapterClass: KClass<T>): T? =
+    asCeption?.getChild(adapterClass.java)
 
 inline fun <reified T : RecyclerView.Adapter<*>> AdapterCeption<*>.getSafe(): T? =
     getChild(T::class.java)
@@ -69,9 +69,15 @@ fun RecyclerView.Adapter<*>.addPaging(
 ): AdapterCeption<*> = PagingAdapter.addPaging(this, handler, loadingViewProvider)
 
 fun <H : PagingAdapter.PagingHandler> RecyclerView.Adapter<*>.pagingAdapterH(): PagingAdapter<H>? =
-    PagingAdapter.getPagingAdapter(this)
+        PagingAdapter.getPagingAdapter(this)
 
-fun RecyclerView.Adapter<*>.pagingAdapter(): PagingAdapter<*>? = pagingAdapterH<PagingAdapter.PagingHandler>()
+fun RecyclerView.Adapter<*>.pagingAdapter(): PagingAdapter<*>? =
+    pagingAdapterH<PagingAdapter.PagingHandler>()
+
+fun <H : PagingAdapter.PagingHandler> RecyclerView.pagingAdapterH(): PagingAdapter<H>? =
+    this.adapter?.pagingAdapterH()
+
+fun RecyclerView.pagingAdapter(): PagingAdapter<*>? = pagingAdapterH<PagingAdapter.PagingHandler>()
 
 val RecyclerView.ViewHolder.offsetPosition
     get() = AdapterCeption.offsetAdapterPosition(this) ?: adapterPosition
