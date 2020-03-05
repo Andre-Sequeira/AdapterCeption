@@ -1,5 +1,7 @@
 # AdapterCeption
 
+[![](https://jitpack.io/v/Andre-Sequeira/AdapterCeption.svg)](https://jitpack.io/#Andre-Sequeira/AdapterCeption)
+
 <p>
 A RecyclerView.Adapter that allows itself to be "mixed" together with other adapters. Like an adapter with different view types but where every view type can be turned into an independent adapter.
   <br>
